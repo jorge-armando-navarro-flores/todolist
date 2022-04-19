@@ -34,6 +34,13 @@ const item3 = new Item ({
 
 const defaultItems = [item1, item2, item3]
 
+const listSchema = {
+  name: String,
+  items: [itemsSchema]
+};
+
+const List = mongoose.model("List", listSchema);
+
 
 
 
@@ -68,14 +75,24 @@ app.get("/", (req, res)=>{
 app.post("/", (req, res) => {
 
   const itemName = req.body.newItem;
+  const listName = req.body.list;
 
   const item = new Item ({
     name: itemName
   });
 
-  item.save();
+  if (listName === "Today"){
+    item.save();
+    res.redirect("/");
+  } else {
+    List.findOne({name: listName}, (err, foundList) => {
+      foundList.items.push(item)
+      foundList.save()
+      res.redirect("/" + listName);
+    });
+  }
 
-  res.redirect("/");
+
 
 
   // if (req.body.list === "Work"){
@@ -100,8 +117,31 @@ app.post("/delete", (req, res) => {
 
 });
 
-app.get("/work", (req, res) => {
-  res.render("list", {listTitle: "Work List", newListItems: workItems});
+app.get("/:customListName", (req, res) => {
+  const customListName = req.params.customListName
+
+  List.findOne({name: customListName}, (err, foundList) => {
+    if (!err){
+      if (!foundList){
+        // Create a new list
+        const list = new List({
+          name: customListName,
+          items: defaultItems
+        });
+
+        list.save();
+        res.redirect("/" + customListName);
+      } else {
+        // Show an existing list
+        res.render("list", {
+          listTitle: foundList.name,
+          newListItems: foundList.items
+        });
+      }
+    }
+  });
+
+
 });
 
 app.get("/about", (req, res) => {
